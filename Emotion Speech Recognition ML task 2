@@ -1,0 +1,86 @@
+#Emotion Recognition from speech_Codealpha
+pip install librosa numpy pandas scikit-learn matplotlib
+
+import os
+import librosa
+import numpy as np
+import pandas as pd
+
+# Function to extract features from an audio file
+def extract_features(file_name):
+    audio, sample_rate = librosa.load(file_name, res_type='kaiser_fast')
+    mfccs = librosa.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=40)
+    mfccs_scaled = np.mean(mfccs.T, axis=0)
+    return mfccs_scaled
+
+# Load the dataset and extract features
+def load_data(dataset_path):
+    features = []
+    labels = []
+    for folder in os.listdir(dataset_path):
+        for file in os.listdir(os.path.join(dataset_path, folder)):
+            file_path = os.path.join(dataset_path, folder, file)
+            data = extract_features(file_path)
+            features.append(data)
+            labels.append(folder)
+    return np.array(features), np.array(labels)
+
+# Define the path to the dataset
+dataset_path = 'path_to_dataset'
+
+# Load the dataset
+X, y = load_data(dataset_path)
+
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import StandardScaler
+
+# Encode the labels
+label_encoder = LabelEncoder()
+y = label_encoder.fit_transform(y)
+
+# Split the dataset into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Scale the features
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Initialize the model
+model = RandomForestClassifier(random_state=42)
+
+# Train the model
+model.fit(X_train, y_train)
+
+# Make predictions
+y_pred = model.predict(X_test)
+
+# Evaluate the model
+accuracy = accuracy_score(y_test, y_pred)
+print(f'Accuracy: {accuracy:.2f}')
+print(classification_report(y_test, y_pred))
+
+# Confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=label_encoder.classes_, yticklabels=label_encoder.classes_)
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.show()
+
+import joblib
+
+# Save the model
+joblib.dump(model, 'emotion_recognition_model.pkl')
+
+# Load the model (for future use)
+# model = joblib.load('emotion_recognition_model.pkl')
+
